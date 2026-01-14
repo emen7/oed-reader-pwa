@@ -37,27 +37,45 @@ class OEDReaderApp {
         } else {
             console.error('Capture button not found!');
         }
-        document.getElementById('uploadButton').addEventListener('click', () => {
-            document.getElementById('fileInput').click();
-        });
-        document.getElementById('fileInput').addEventListener('change', (e) => {
-            if (e.target.files[0]) {
-                this.processImage(e.target.files[0]);
-            }
-        });
+
+        const uploadBtn = document.getElementById('uploadButton');
+        if (uploadBtn) {
+            uploadBtn.addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+            });
+        }
+
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    this.processImage(e.target.files[0]);
+                }
+            });
+        }
 
         // OCR cancel
-        document.getElementById('cancelOCR').addEventListener('click', () => {
-            this.switchScreen('camera');
-        });
+        const cancelBtn = document.getElementById('cancelOCR');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                this.switchScreen('camera');
+            });
+        }
 
         // Collection actions
-        document.getElementById('exportButton').addEventListener('click', () => this.exportCollection());
-        document.getElementById('clearButton').addEventListener('click', () => {
-            if (confirm('Clear all saved entries? This cannot be undone.')) {
-                this.clearCollection();
-            }
-        });
+        const exportBtn = document.getElementById('exportButton');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportCollection());
+        }
+
+        const clearBtn = document.getElementById('clearButton');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                if (confirm('Clear all saved entries? This cannot be undone.')) {
+                    this.clearCollection();
+                }
+            });
+        }
 
         // Sidebar toggle
         const menuToggle = document.getElementById('menuToggle');
@@ -454,4 +472,4 @@ function escapeHtml(text) {
 }
 
 // Initialize app
-const app = new OEDReaderApp();
+// App initialization moved to index.html DOMContentLoaded listener
