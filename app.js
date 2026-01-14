@@ -156,8 +156,20 @@ class OEDReaderApp {
 
             console.log('Camera ready:', video.videoWidth, 'x', video.videoHeight);
         } catch (error) {
-            console.error('Camera access denied:', error);
-            alert('Camera access is required to scan entries.');
+            console.error('Camera access error:', error);
+
+            let errorMessage = 'Could not access camera. ';
+            if (error.name === 'NotReadableError') {
+                errorMessage += 'The camera is being used by another application. Please close other apps using the camera and try again, or use the Upload button to scan an image file instead.';
+            } else if (error.name === 'NotAllowedError') {
+                errorMessage += 'Camera permission was denied. Please allow camera access and reload.';
+            } else if (error.name === 'NotFoundError') {
+                errorMessage += 'No camera found. Please use the Upload button to scan an image file instead.';
+            } else {
+                errorMessage += 'Please try the Upload button to scan an image file instead.';
+            }
+
+            alert(errorMessage);
         }
     }
 
