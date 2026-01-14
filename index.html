@@ -622,6 +622,7 @@
                 <div class="sidebar-title">Navigation</div>
                 <button class="nav-button active" data-screen="camera">📷 Scan Entry</button>
                 <button class="nav-button" data-screen="collection">⭐ My Collection</button>
+                <button class="nav-button" data-screen="settings">⚙️ Settings</button>
                 <button class="nav-button" data-screen="help">ℹ️ Help & Guide</button>
             </div>
 
@@ -660,7 +661,7 @@
                         <div class="progress-bar">
                             <div class="progress-fill" id="progressFill"></div>
                         </div>
-                        <div class="ocr-text" id="ocrText">Initializing Tesseract...</div>
+                        <div class="ocr-text" id="ocrText">Preparing OCR...</div>
                     </div>
                     <button class="action-button danger" id="cancelOCR">Cancel</button>
                 </div>
@@ -676,6 +677,76 @@
                 <div class="entry-container">
                     <h2 style="margin-bottom: 20px;">My Collection</h2>
                     <div id="collectionDisplay"></div>
+                </div>
+            </div>
+
+            <!-- SETTINGS SCREEN -->
+            <div class="screen" id="settings-screen">
+                <div class="entry-container">
+                    <h2 style="margin-bottom: 20px;">⚙️ Settings</h2>
+
+                    <div class="section">
+                        <div class="section-header">
+                            <span class="collapse-icon">▼</span>
+                            Google Cloud Vision API Key
+                        </div>
+                        <div class="section-content">
+                            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                                This app uses Google Cloud Vision API for professional-quality OCR of micro-print text.
+                                You'll need your own API key to use the scanner.
+                            </p>
+
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">
+                                    API Key:
+                                </label>
+                                <input
+                                    type="password"
+                                    id="apiKeyInput"
+                                    placeholder="Enter your Google Cloud Vision API key"
+                                    style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);
+                                           background: var(--bg-primary); color: var(--text-primary); font-size: 0.9em;"
+                                />
+                            </div>
+
+                            <div id="apiKeyStatus" style="margin-bottom: 16px; padding: 12px; border-radius: 6px; display: none;"></div>
+
+                            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                <button class="action-button" id="saveApiKey">💾 Save Key</button>
+                                <button class="action-button" id="testApiKey" style="background: var(--accent-secondary);">🧪 Test Key</button>
+                                <button class="action-button danger" id="clearApiKey">🗑️ Clear Key</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-header">
+                            <span class="collapse-icon">▼</span>
+                            Setup Instructions
+                        </div>
+                        <div class="section-content">
+                            <p style="margin-bottom: 12px;"><strong>How to get your API key:</strong></p>
+                            <ol style="margin-left: 20px; line-height: 1.8;">
+                                <li>Go to <a href="https://console.cloud.google.com" target="_blank" style="color: var(--accent-primary);">Google Cloud Console</a></li>
+                                <li>Create a new project or select an existing one</li>
+                                <li>Enable the "Cloud Vision API" for your project</li>
+                                <li>Go to "APIs & Services" → "Credentials"</li>
+                                <li>Click "Create Credentials" → "API Key"</li>
+                                <li>Copy your API key and paste it above</li>
+                                <li>Recommended: Restrict the key to "Cloud Vision API" only</li>
+                            </ol>
+
+                            <p style="margin-top: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: 6px; font-size: 0.9em;">
+                                <strong>💰 Cost:</strong> Google offers 1,000 free Vision API calls per month.
+                                After that, it's $1.50 per 1,000 images. For occasional use, this app will likely stay within the free tier.
+                            </p>
+
+                            <p style="margin-top: 12px; padding: 12px; background: var(--bg-tertiary); border-radius: 6px; font-size: 0.9em;">
+                                <strong>🔒 Privacy:</strong> Your API key is stored only on your device.
+                                OCR requests go directly from your browser to Google's servers. No data is sent to our servers.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -729,7 +800,6 @@
     </div>
 
     <!-- SCRIPTS -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="storage.js"></script>
     <script src="oedParser.js"></script>
     <script src="app.js"></script>

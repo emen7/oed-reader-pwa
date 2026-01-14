@@ -23,7 +23,13 @@ class OEDReaderApp {
         this.setupEventListeners();
         this.loadRecentScans();
         this.registerServiceWorker();
-        this.startCamera();
+
+        // Check for API key before starting camera
+        if (!this.hasApiKey()) {
+            this.showFirstRunMessage();
+        } else {
+            this.startCamera();
+        }
     }
 
     // NAVIGATION & EVENTS
@@ -70,6 +76,20 @@ class OEDReaderApp {
                 }
             });
 
+        // Settings actions
+        document.getElementById('saveApiKey')
+            .addEventListener('click', () => this.saveApiKey());
+
+        document.getElementById('testApiKey')
+            .addEventListener('click', () => this.testApiKey());
+
+        document.getElementById('clearApiKey')
+            .addEventListener('click', () => {
+                if (confirm('Clear your API key? You will need to re-enter it to use the scanner.')) {
+                    this.clearApiKey();
+                }
+            });
+
         // Sidebar toggle on mobile
         const menuToggle = document.getElementById('menuToggle');
         if (window.innerWidth <= 768) {
@@ -108,6 +128,10 @@ class OEDReaderApp {
 
         if (screenName === 'collection') {
             this.displayCollection();
+        }
+
+        if (screenName === 'settings') {
+            this.loadSettingsScreen();
         }
     }
 
@@ -410,32 +434,167 @@ class OEDReaderApp {
         return canvas.toDataURL('image/png');
     }
 
-    // OCR
+    // API KEY MANAGEMENT
 
-    async recognizeText(imageDataUrl) {
+    hasApiKey() {
+        return !!localStorage.getItem('google_vision_api_key');
+    }
+
+    getApiKey() {
+        return localStorage.getItem('google_vision_api_key');
+    }
+
+    showFirstRunMessage() {
+        const display = document.getElementById('entryDisplay');
+        display.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 3em; margin-bottom: 20px;">🔑</div>
+                <h2 style="margin-bottom: 16px; color: var(--accent-primary);">Welcome to OED Reader</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6;">
+                    To use this app, you'll need a Google Cloud Vision API key for professional-quality OCR.
+                    Don't worry - it's free for up to 1,000 scans per month!
+                </p>
+                <button class="action-button" onclick="app.switchScreen('settings')">
+                    ⚙️ Go to Settings
+                </button>
+            </div>
+        `;
+        this.switchScreen('entry');
+    }
+
+    loadSettingsScreen() {
+        const apiKey = this.getApiKey();
+        const input = document.getElementById('apiKeyInput');
+        if (apiKey && input) {
+            input.value = apiKey;
+        }
+    }
+
+    saveApiKey() {
+        const input = document.getElementById('apiKeyInput');
+        const key = input.value.trim();
+
+        if (!key) {
+            this.showApiKeyStatus('Please enter an API key', 'error');
+            return;
+        }
+
+        localStorage.setItem('google_vision_api_key', key);
+        this.showApiKeyStatus('✓ API key saved successfully!', 'success');
+    }
+
+    async testApiKey() {
+        const key = document.getElementById('apiKeyInput').value.trim();
+
+        if (!key) {
+            this.showApiKeyStatus('Please enter an API key first', 'error');
+            return;
+        }
+
+        this.showApiKeyStatus('Testing API key...', 'info');
+
         try {
-            document.getElementById('ocrText').textContent = 'Running OCR on entry...';
+            // Create a small test image (1x1 white pixel as base64)
+            const testImage = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
 
-            const result = await Tesseract.recognize(
-                imageDataUrl,
-                'eng',
+            const response = await fetch(
+                `https://vision.googleapis.com/v1/images:annotate?key=${key}`,
                 {
-                    logger: (m) => {
-                        if (typeof m.progress === 'number') {
-                            const pct = Math.round(m.progress * 100);
-                            document.getElementById('progressFill').style.width = pct + '%';
-                        }
-                        if (m.status === 'recognizing text') {
-                            document.getElementById('ocrText').textContent =
-                                `Recognizing text… ${Math.round(m.progress * 100)}%`;
-                        }
-                    }
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        requests: [{
+                            image: { content: testImage },
+                            features: [{ type: 'TEXT_DETECTION', maxResults: 1 }]
+                        }]
+                    })
                 }
             );
 
-            const ocrText = result.data.text || '';
+            if (response.ok) {
+                this.showApiKeyStatus('✓ API key is valid and working!', 'success');
+                localStorage.setItem('google_vision_api_key', key);
+            } else {
+                const error = await response.json();
+                this.showApiKeyStatus(`✗ API key test failed: ${error.error?.message || 'Invalid key'}`, 'error');
+            }
+        } catch (err) {
+            this.showApiKeyStatus(`✗ Test failed: ${err.message}`, 'error');
+        }
+    }
+
+    clearApiKey() {
+        localStorage.removeItem('google_vision_api_key');
+        document.getElementById('apiKeyInput').value = '';
+        this.showApiKeyStatus('API key cleared', 'info');
+    }
+
+    showApiKeyStatus(message, type) {
+        const statusEl = document.getElementById('apiKeyStatus');
+        statusEl.style.display = 'block';
+        statusEl.textContent = message;
+
+        const colors = {
+            success: '#7fa650',
+            error: '#dc2626',
+            info: '#60a5fa'
+        };
+
+        statusEl.style.background = colors[type] || colors.info;
+        statusEl.style.color = 'white';
+    }
+
+    // OCR WITH GOOGLE VISION API
+
+    async recognizeText(imageDataUrl) {
+        // Check for API key
+        if (!this.hasApiKey()) {
+            alert('Please configure your Google Vision API key in Settings first.');
+            this.switchScreen('settings');
+            return;
+        }
+
+        try {
+            document.getElementById('ocrText').textContent = 'Sending image to Google Vision API...';
+            document.getElementById('progressFill').style.width = '50%';
+
+            // Extract base64 data from data URL
+            const base64Data = imageDataUrl.split(',')[1];
+
+            const apiKey = this.getApiKey();
+            const response = await fetch(
+                `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        requests: [{
+                            image: { content: base64Data },
+                            features: [{ type: 'TEXT_DETECTION', maxResults: 1 }]
+                        }]
+                    })
+                }
+            );
+
+            document.getElementById('progressFill').style.width = '75%';
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || 'Vision API request failed');
+            }
+
+            const result = await response.json();
+            document.getElementById('progressFill').style.width = '100%';
+
+            const ocrText = result.responses[0]?.fullTextAnnotation?.text || '';
             console.log('OCR extracted text:', ocrText);
-            document.getElementById('ocrText').textContent = ocrText;
+            document.getElementById('ocrText').textContent = ocrText || 'No text detected';
+
+            if (!ocrText) {
+                alert('No text detected in the image. Try a clearer photo or tighter crop.');
+                this.switchScreen('camera');
+                return;
+            }
 
             const parsed = parseOEDEntry(ocrText);
             console.log('Parsed entry:', parsed);

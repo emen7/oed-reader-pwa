@@ -1,6 +1,6 @@
-# OED Micro-Print Reader PWA
+# OED Micro-Print Reader
 
-A progressive web app for scanning and displaying Oxford English Dictionary micro-print entries with camera-enabled OCR.
+A Progressive Web App (PWA) for scanning and beautifully displaying Oxford English Dictionary micro-print entries using Google Cloud Vision API for professional-quality OCR.
 
 ![Status](https://img.shields.io/badge/status-production-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -8,44 +8,51 @@ A progressive web app for scanning and displaying Oxford English Dictionary micr
 
 ## ✨ Features
 
-- 📸 **Camera Integration** - Real-time camera access on Android and iOS
-- 🔍 **Client-Side OCR** - Tesseract.js processing (no server uploads)
-- 📖 **Beautiful Display** - Clean typography with collapsible sections
-- 🌙 **Dark Mode** - Toggle between light and dark themes
-- 💾 **Offline Storage** - IndexedDB for local collection management
-- 📱 **PWA Installation** - Add to home screen like a native app
-- ⚡ **Offline First** - Full functionality without internet
+- **Smart Region Detection** - Automatically detects column layout and individual word entries
+- **High-Quality OCR** - Uses Google Cloud Vision API for accurate text recognition of micro-print
+- **Multi-Page Continuation** - Seamlessly merge entries that span multiple pages or columns
+- **Offline Storage** - Save entries to your device for offline access with IndexedDB
+- **Beautiful Display** - Clean, readable formatting with collapsible sections
+- **PWA** - Install on your phone for a native app experience
+- **Privacy-First** - Your API key and images stay on your device
+
+## 🌐 Live Demo
+
+[https://oed.ubdata.org](https://oed.ubdata.org)
 
 ## 🚀 Quick Start
 
-### Deploy Your Own Instance
+### 1. Get a Google Cloud Vision API Key
 
-**1. Clone this repository:**
-```bash
-git clone https://github.com/YOUR_USERNAME/oed-reader-pwa.git
-cd oed-reader-pwa
-```
+The app requires a Google Cloud Vision API key for OCR. **Good news:** Google offers **1,000 free scans per month**!
 
-**2. Deploy to Vercel (1 minute):**
-```bash
-npm install -g vercel
-vercel --prod
-```
+**Step-by-step:**
 
-**3. Install on your phone:**
-- Open the deployed URL
-- Add to home screen (iOS Safari or Android Chrome)
-- Start scanning!
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project (or select an existing one)
+3. Enable the **Cloud Vision API**:
+   - Navigate to "APIs & Services" → "Library"
+   - Search for "Cloud Vision API"
+   - Click "Enable"
+4. Create an API key:
+   - Go to "APIs & Services" → "Credentials"
+   - Click "Create Credentials" → "API Key"
+   - Copy your new API key
+5. **Recommended:** Restrict your API key:
+   - Click on your API key to edit it
+   - Under "API restrictions", select "Restrict key"
+   - Choose "Cloud Vision API" from the dropdown
+   - Under "Application restrictions", add `https://oed.ubdata.org/*` (or your domain)
+   - Click "Save"
 
-See **[DEPLOY.md](DEPLOY.md)** for complete deployment instructions.
+### 2. Configure the App
 
-### Local Testing
-
-```bash
-# Use any static server
-python3 -m http.server 8000
-# Open http://localhost:8000
-```
+1. Open [https://oed.ubdata.org](https://oed.ubdata.org)
+2. Click **⚙️ Settings** in the sidebar
+3. Paste your API key
+4. Click **💾 Save Key**
+5. Click **🧪 Test Key** to verify
+6. Start scanning!
 
 ## 📱 Installation
 
@@ -59,62 +66,114 @@ python3 -m http.server 8000
 2. Share → "Add to Home Screen"
 3. Launch from home screen
 
+## 🔍 How to Use
+
+### Scanning an Entry
+
+1. Click **📷 Scan Entry** to access your camera
+2. Frame a micro-print entry
+3. Tap **📸 Capture**
+4. The app will:
+   - Detect columns and word entries
+   - Highlight detected regions
+   - Let you tap a region to OCR just that entry
+5. View the formatted result!
+
+### Multi-Page Entries
+
+If an entry spans multiple pages:
+
+1. After scanning the first part, the app shows: **⚠️ Entry may be incomplete**
+2. Click **➕ Scan next page**
+3. Scan the continuation
+4. The app automatically merges both parts
+
+### Saving Entries
+
+- Click **⭐ Save to collection** on any entry
+- Access saved entries via **⭐ My Collection**
+- Export your collection as JSON via **📥 Export Collection**
+
+## 💰 Cost Information
+
+**Google Cloud Vision API Pricing:**
+- **Free tier:** 1,000 requests/month
+- **After free tier:** $1.50 per 1,000 requests
+- **For occasional use:** Most users stay within free tier
+
+See [Google Cloud Vision Pricing](https://cloud.google.com/vision/pricing) for details.
+
+## 🔐 Privacy & Security
+
+- ✅ **Your API key** stored only on your device (localStorage)
+- ✅ **OCR requests** go directly from browser to Google
+- ✅ **No intermediary servers** - we never see your images or key
+- ✅ **No tracking** - pure client-side PWA
+- ✅ **Open source** - inspect the code yourself
+
 ## 📂 Project Structure
 
 ```
 oed-reader-pwa/
-├── index.html           # App shell with inline CSS
-├── app.js              # Core application logic
-├── oedParser.js        # OCR text → OED entry parser
+├── index.html          # App shell with inline CSS
+├── app.js              # Application logic
+├── oedParser.js        # OED entry parser
 ├── storage.js          # IndexedDB wrapper
-├── service-worker.js   # Offline support
-├── manifest.json       # PWA configuration
-├── DEPLOY.md          # Deployment guide
-├── SETUP.md           # Detailed setup instructions
-└── README.md          # This file
+├── service-worker.js   # PWA offline support
+├── manifest.json       # PWA manifest
+└── README.md           # This file
 ```
 
-## 🛠️ How It Works
+## 🛠️ Technical Details
 
-1. **Capture** - Use camera or upload image
-2. **OCR** - Tesseract.js processes the image client-side
-3. **Parse** - Extract headword, pronunciation, etymology, definitions
-4. **Display** - Beautifully formatted entry with collapsible sections
-5. **Save** - Store in IndexedDB for offline access
+### Architecture
+
+- **Smart Detection:** Analyzes page layout to find columns and word boundaries
+- **Enhancement:** 4x upscaling with high-contrast thresholding for micro-print
+- **Parser:** Heuristic-based OED structure detection (headword, pronunciation, etymology, senses)
+- **Completeness:** Identifies incomplete entries via punctuation and quote analysis
+
+### Browser Compatibility
+
+Works on:
+- iOS Safari (iPhone/iPad)
+- Android Chrome
+- Desktop Chrome/Edge/Firefox
+
+Requires:
+- Camera access
+- Modern browser with JavaScript
+- localStorage support
+
+### Offline Functionality
+
+- Service Worker caches app shell
+- Saved entries in IndexedDB
+- OCR requires internet (Vision API)
 
 ## 💡 Tips for Best Results
 
 - Use good lighting (avoid shadows and glare)
-- Hold camera steady during capture
-- Center the entry in the frame
+- Hold camera steady
+- Center the entry in frame
 - Keep text sharp and focused
-- First scan takes longer (downloading OCR model)
+- The app works best with the OED Compact Edition micro-print format
 
-## 🌐 Live Demo
+## 🚀 Deploy Your Own Instance
 
-**Production:** https://oed.ubdata.org
+```bash
+# Clone repository
+git clone https://github.com/yourusername/oed-reader-pwa.git
+cd oed-reader-pwa
 
-## 📊 Technical Details
+# Deploy to Vercel
+npm install -g vercel
+vercel --prod
 
-- **Size:** ~82KB total (25KB gzipped)
-- **OCR:** Tesseract.js v5 (100MB model, cached after first use)
-- **Storage:** IndexedDB (~10,000 entries capacity)
-- **Framework:** Vanilla JavaScript (no dependencies)
-- **Compatibility:** Modern browsers with camera API support
+# Or deploy to any static hosting (Netlify, GitHub Pages, etc.)
+```
 
-## 🔐 Privacy
-
-- ✅ 100% client-side processing
-- ✅ No server uploads
-- ✅ No analytics or tracking
-- ✅ Offline-first architecture
-- ✅ Data stays on your device
-
-## 📖 Documentation
-
-- **[DEPLOY.md](DEPLOY.md)** - Complete deployment walkthrough
-- **[SETUP.md](SETUP.md)** - Detailed setup instructions
-- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Technical overview
+Ensure HTTPS is enabled (required for camera and PWA features).
 
 ## 🤝 Contributing
 
@@ -126,21 +185,23 @@ Contributions welcome! Feel free to:
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details
+MIT License - see LICENSE file for details.
 
-## 🙏 Acknowledgments
+## 🙏 Credits
 
-- Oxford English Dictionary for the incredible micro-print edition
-- Tesseract.js team for client-side OCR
-- PWA community for web platform standards
+Built with:
+- Google Cloud Vision API
+- Vanilla JavaScript (no frameworks!)
+- Service Worker API
+- IndexedDB
 
 ## 🔗 Related Projects
 
-- **[ubdata.org](https://ubdata.org)** - Urantia Book research platform
+- [ubdata.org](https://ubdata.org) - Urantia Book research platform
 - Main use case: Etymology research for Urantia Book terminology
 
 ---
 
-**Built with ❤️ for micro-print enthusiasts**
+**Built for micro-print enthusiasts**
 
-Questions? Open an [issue](https://github.com/YOUR_USERNAME/oed-reader-pwa/issues)
+Questions? Open an [issue](https://github.com/yourusername/oed-reader-pwa/issues)
