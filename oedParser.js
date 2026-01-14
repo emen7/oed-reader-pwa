@@ -30,11 +30,17 @@ function parseOEDEntry(rawText) {
         const line = lines[i];
 
         // Headword guess: first "word-like" line that is not obviously etymology.
-        if (!entry.headword && i <= 3) {
+        // Relaxed for OCR errors: allow numbers, some punctuation
+        if (!entry.headword && i <= 5) {
             const candidate = line.replace(/^[*†]+/, '').trim();
-            if (/^[A-Za-z][A-Za-z\s\-']{1,40}$/.test(candidate) &&
-                !candidate.toLowerCase().includes('etymolog')) {
+            // More lenient: just needs to start with letter and be reasonable length
+            if (/^[A-Za-z]/.test(candidate) &&
+                candidate.length >= 2 &&
+                candidate.length <= 50 &&
+                !candidate.toLowerCase().includes('etymolog') &&
+                !candidate.toLowerCase().includes('pronunciation')) {
                 entry.headword = candidate;
+                console.log('Found headword:', candidate);
                 continue;
             }
         }

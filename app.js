@@ -190,12 +190,17 @@ class OEDReaderApp {
         ctx.drawImage(img, 0, 0);
 
         const columns = this.detectColumns(canvas, ctx);
+        console.log('Detected columns:', columns.length);
+
         const wordRegions = [];
         columns.forEach(col => {
             wordRegions.push(...this.detectWordBoundaries(canvas, ctx, col));
         });
 
+        console.log('Detected word regions:', wordRegions.length);
+
         if (wordRegions.length === 0) {
+            console.log('No regions detected, falling back to full image OCR');
             // Fall back: OCR whole image with enhancement
             const enhanced = await this.enhanceAndCrop(img, {
                 x: 0, y: 0, width: img.width, height: img.height
@@ -429,9 +434,11 @@ class OEDReaderApp {
             );
 
             const ocrText = result.data.text || '';
+            console.log('OCR extracted text:', ocrText);
             document.getElementById('ocrText').textContent = ocrText;
 
             const parsed = parseOEDEntry(ocrText);
+            console.log('Parsed entry:', parsed);
 
             if (this.isContinuation && this.partialEntry && parsed) {
                 const merged = this.mergeEntries(this.partialEntry, parsed);
@@ -440,9 +447,11 @@ class OEDReaderApp {
                 this.displayEntry(merged);
                 this.saveToRecentScans(merged);
             } else if (parsed && parsed.headword) {
+                console.log('Displaying entry with headword:', parsed.headword);
                 this.displayEntry(parsed);
                 this.saveToRecentScans(parsed);
             } else {
+                console.error('Parser failed. Parsed:', parsed);
                 alert('Could not parse an entry from this OCR result. Try a tighter crop or clearer photo.');
                 this.switchScreen('camera');
             }
