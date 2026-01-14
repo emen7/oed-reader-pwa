@@ -163,6 +163,7 @@ class OEDReaderApp {
     }
 
     captureImage() {
+        console.log('Capture button clicked');
         const video = document.getElementById('camera');
         const canvas = document.getElementById('captureCanvas');
 
@@ -173,29 +174,48 @@ class OEDReaderApp {
             return;
         }
 
+        console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
 
         const ctx = canvas.getContext('2d');
+        console.log('Drawing video to canvas...');
         ctx.drawImage(video, 0, 0);
 
-        canvas.toBlob((blob) => {
-            if (!blob) {
-                alert('Failed to capture image. Please try again.');
-                return;
-            }
-            this.processImage(blob);
-        }, 'image/jpeg', 0.95);
+        console.log('Converting canvas to blob...');
+        try {
+            canvas.toBlob((blob) => {
+                console.log('Blob callback fired, blob:', blob);
+                if (!blob) {
+                    console.error('Blob is null or undefined');
+                    alert('Failed to capture image. Please try again.');
+                    return;
+                }
+                console.log('Blob size:', blob.size, 'bytes');
+                this.processImage(blob);
+            }, 'image/jpeg', 0.95);
+        } catch (error) {
+            console.error('Error in toBlob:', error);
+            alert('Error capturing image: ' + error.message);
+        }
     }
 
     async processImage(blob) {
+        console.log('processImage called with blob:', blob);
+        console.log('Switching to processing screen...');
         this.switchScreen('processing');
-        
+
         const reader = new FileReader();
         reader.onload = async (e) => {
+            console.log('FileReader loaded, starting OCR...');
             await this.recognizeText(e.target.result);
         };
+        reader.onerror = (error) => {
+            console.error('FileReader error:', error);
+            alert('Error reading image file');
+        };
         reader.readAsDataURL(blob);
+        console.log('FileReader.readAsDataURL called');
     }
 
     async recognizeText(imageData) {
