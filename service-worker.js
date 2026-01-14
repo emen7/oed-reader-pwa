@@ -1,7 +1,7 @@
 // Service Worker for OED Reader PWA
 // Enables offline functionality and app installation
 
-const CACHE_NAME = 'oed-reader-v7';
+const CACHE_NAME = 'oed-reader-v8';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',

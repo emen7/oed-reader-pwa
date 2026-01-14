@@ -284,13 +284,15 @@ class OEDReaderApp {
         let startRow = 0;
 
         for (let row = 0; row < height; row++) {
-            const dense = horizontalDensity[row] > avg * 1.3;
+            // Use lower threshold (1.1x) to group lines within entries, not split them
+            const dense = horizontalDensity[row] > avg * 1.1;
             if (dense && !inRegion) {
                 inRegion = true;
                 startRow = row;
             } else if (!dense && inRegion) {
                 const h = row - startRow;
-                if (h > 20 && h < 260) {
+                // Require minimum 60px to capture full entries (4-5 lines), not individual lines
+                if (h > 60 && h < 300) {
                     regions.push({
                         x: x,
                         y: y + startRow - 4,
