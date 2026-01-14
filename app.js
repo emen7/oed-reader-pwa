@@ -6,24 +6,15 @@ class OEDReaderApp {
         this.currentEntry = null;
         this.videoStream = null;
         this.ocrWorker = null;
-        this.currentTheme = localStorage.getItem('theme') || 'light';
-        
+
         this.init();
     }
 
     async init() {
-        this.setupTheme();
         this.setupEventListeners();
         this.loadRecentScans();
         await this.initOCR();
         this.registerServiceWorker();
-    }
-
-    setupTheme() {
-        if (this.currentTheme === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            document.getElementById('themeToggle').textContent = '☀️';
-        }
     }
 
     setupEventListeners() {
@@ -33,11 +24,6 @@ class OEDReaderApp {
                 this.switchScreen(e.target.dataset.screen);
                 this.closeSidebar();
             });
-        });
-
-        // Theme toggle
-        document.getElementById('themeToggle').addEventListener('click', () => {
-            this.toggleTheme();
         });
 
         // Camera
@@ -94,19 +80,6 @@ class OEDReaderApp {
                 e.target.closest('.section').classList.toggle('collapsed');
             }
         });
-    }
-
-    toggleTheme() {
-        this.currentTheme = this.currentTheme === 'light' ? 'dark' : 'light';
-        localStorage.setItem('theme', this.currentTheme);
-        
-        if (this.currentTheme === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            document.getElementById('themeToggle').textContent = '☀️';
-        } else {
-            document.documentElement.removeAttribute('data-theme');
-            document.getElementById('themeToggle').textContent = '🌙';
-        }
     }
 
     switchScreen(screenName) {
