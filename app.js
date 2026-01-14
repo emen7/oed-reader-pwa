@@ -5,7 +5,6 @@ class OEDReaderApp {
     constructor() {
         this.currentEntry = null;
         this.videoStream = null;
-        this.currentTheme = localStorage.getItem('theme') || 'light';
 
         // New state for smart OCR flow
         this.currentImageData = null;   // data URL of last captured page
@@ -18,33 +17,13 @@ class OEDReaderApp {
     }
 
     async init() {
-        this.setupTheme();
+        // Force dark mode
+        document.documentElement.setAttribute('data-theme', 'dark');
+
         this.setupEventListeners();
         this.loadRecentScans();
         this.registerServiceWorker();
         this.startCamera();
-    }
-
-    // THEME
-
-    setupTheme() {
-        if (this.currentTheme === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            document.getElementById('themeToggle').textContent = '☀️';
-        }
-    }
-
-    toggleTheme() {
-        this.currentTheme = this.currentTheme === 'light' ? 'dark' : 'light';
-        localStorage.setItem('theme', this.currentTheme);
-
-        if (this.currentTheme === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            document.getElementById('themeToggle').textContent = '☀️';
-        } else {
-            document.documentElement.removeAttribute('data-theme');
-            document.getElementById('themeToggle').textContent = '🌙';
-        }
     }
 
     // NAVIGATION & EVENTS
@@ -57,9 +36,6 @@ class OEDReaderApp {
                 this.closeSidebar();
             });
         });
-
-        document.getElementById('themeToggle')
-            .addEventListener('click', () => this.toggleTheme());
 
         // Camera controls
         document.getElementById('captureButton')
