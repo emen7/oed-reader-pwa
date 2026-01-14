@@ -116,11 +116,19 @@ class OEDReaderApp {
         document.querySelectorAll('[data-screen]').forEach(btn => {
             btn.classList.remove('active');
         });
-        document.querySelector(`[data-screen="${screenName}"]`).classList.add('active');
+
+        // Only add active class if a button exists for this screen
+        const navButton = document.querySelector(`[data-screen="${screenName}"]`);
+        if (navButton) {
+            navButton.classList.add('active');
+        }
 
         // Switch screens
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(`${screenName}-screen`).classList.add('active');
+        const screenElement = document.getElementById(`${screenName}-screen`);
+        if (screenElement) {
+            screenElement.classList.add('active');
+        }
 
         // Special handling for different screens
         if (screenName === 'camera') {
