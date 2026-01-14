@@ -128,9 +128,27 @@ class OEDReaderApp {
                     height: { ideal: 1080 }
                 }
             });
-            
+
             const video = document.getElementById('camera');
             video.srcObject = this.videoStream;
+
+            // Wait for video metadata to load before enabling capture
+            await new Promise((resolve) => {
+                if (video.readyState >= 2) {
+                    resolve();
+                } else {
+                    video.addEventListener('loadedmetadata', resolve, { once: true });
+                }
+            });
+
+            // Ensure video is playing
+            try {
+                await video.play();
+            } catch (playError) {
+                console.log('Video autoplay handled by browser:', playError);
+            }
+
+            console.log('Camera ready:', video.videoWidth, 'x', video.videoHeight);
         } catch (error) {
             console.error('Camera access denied:', error);
             alert('Camera access is required to scan entries.');
