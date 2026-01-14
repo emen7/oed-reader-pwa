@@ -41,17 +41,28 @@ class OEDReaderApp {
         const uploadBtn = document.getElementById('uploadButton');
         if (uploadBtn) {
             uploadBtn.addEventListener('click', () => {
+                console.log('Upload button clicked');
                 document.getElementById('fileInput').click();
             });
+            console.log('Upload button listener attached');
+        } else {
+            console.error('Upload button not found!');
         }
 
         const fileInput = document.getElementById('fileInput');
         if (fileInput) {
             fileInput.addEventListener('change', (e) => {
+                console.log('File input changed, files:', e.target.files);
                 if (e.target.files[0]) {
+                    console.log('Processing file:', e.target.files[0].name, e.target.files[0].type, e.target.files[0].size);
                     this.processImage(e.target.files[0]);
+                } else {
+                    console.error('No file selected');
                 }
             });
+            console.log('File input listener attached');
+        } else {
+            console.error('File input not found!');
         }
 
         // OCR cancel
