@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2a5298">
+    <meta name="description" content="Scan and beautifully display Oxford English Dictionary micro-print entries with OCR">
+    <title>OED Micro-Print Reader</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%232a5298' width='192' height='192'/><text x='50%' y='50%' font-size='100' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle'>O</text></svg>">
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #f0f4f8;
+            --text-primary: #1a202c;
+            --text-secondary: #4a5568;
+            --text-tertiary: #718096;
+            --accent-primary: #2a5298;
+            --accent-secondary: #7fa650;
+            --accent-tertiary: #d4a574;
+            --border-color: #e2e8f0;
+            --shadow: 0 4px 12px rgba(0,0,0,0.1);
+            --card-bg: #ffffff;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a202c;
+            --bg-secondary: #2d3748;
+            --bg-tertiary: #1e4040;
+            --text-primary: #e2e8f0;
+            --text-secondary: #cbd5e0;
+            --text-tertiary: #a0aec0;
+            --accent-primary: #60a5fa;
+            --accent-secondary: #86c447;
+            --accent-tertiary: #f59e0b;
+            --border-color: #4a5568;
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+            --card-bg: #2d3748;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background 0.3s, color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-header {
+            background: var(--accent-primary);
+            color: white;
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .app-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .app-title-sub {
+            font-size: 0.7em;
+            opacity: 0.85;
+            display: block;
+            font-weight: 400;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        button {
+            background: transparent;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .theme-toggle {
+            background: rgba(255,255,255,0.1);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 1.2em;
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-title {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .nav-button {
+            width: 100%;
+            text-align: left;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .nav-button:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-button.active {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
+        .collection-item {
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .collection-item:hover {
+            border-color: var(--accent-primary);
+            box-shadow: var(--shadow);
+        }
+
+        .collection-item-word {
+            font-weight: 600;
+            color: var(--accent-primary);
+            font-size: 0.95em;
+        }
+
+        .collection-item-date {
+            font-size: 0.75em;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .screen {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* CAMERA SCREEN */
+        .camera-preview {
+            flex: 1;
+            background: #000;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            background: rgba(0,0,0,0.7);
+            padding: 16px 20px;
+            border-radius: 12px;
+        }
+
+        .camera-button {
+            background: white;
+            color: #000;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .camera-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(255,255,255,0.2);
+        }
+
+        .camera-button.secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        canvas {
+            display: none;
+        }
+
+        /* ENTRY DISPLAY */
+        .entry-container {
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .entry-header {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--accent-primary);
+        }
+
+        .headword {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .pronunciation {
+            font-size: 1.1em;
+            color: var(--text-secondary);
+            font-style: italic;
+            margin-bottom: 12px;
+        }
+
+        .entry-meta {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: var(--accent-tertiary);
+            color: #fff;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .section {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-secondary);
+        }
+
+        .section-header {
+            font-size: 0.95em;
+            font-weight: 600;
+            color: var(--accent-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-header:hover {
+            opacity: 0.8;
+        }
+
+        .collapse-icon {
+            transition: transform 0.2s;
+            font-size: 0.9em;
+        }
+
+        .section.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.2s;
+        }
+
+        .section.collapsed .section-content {
+            max-height: 0;
+        }
+
+        .sense-item {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sense-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .sense-number {
+            display: inline-block;
+            background: var(--accent-primary);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .sense-text {
+            color: var(--text-primary);
+            font-size: 0.95em;
+            margin-bottom: 8px;
+        }
+
+        .quotation {
+            background: var(--bg-tertiary);
+            padding: 12px;
+            border-radius: 6px;
+            font-style: italic;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            margin-top: 8px;
+            border-left: 3px solid var(--accent-tertiary);
+        }
+
+        .abbreviation-tooltip {
+            position: relative;
+            cursor: help;
+            border-bottom: 1px dotted var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .tooltip-content {
+            display: none;
+            position: absolute;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 0.85em;
+            color: var(--text-primary);
+            white-space: nowrap;
+            z-index: 1000;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: var(--shadow);
+            font-style: normal;
+        }
+
+        .tooltip-content::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: var(--bg-tertiary);
+        }
+
+        .abbreviation-tooltip:hover .tooltip-content {
+            display: block;
+        }
+
+        /* OCR STATUS */
+        .ocr-status {
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .status-label {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        .ocr-text {
+            margin-top: 16px;
+            padding: 12px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* BUTTONS */
+        .action-button {
+            background: var(--accent-primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin: 8px 4px;
+        }
+
+        .action-button:hover {
+            background: var(--accent-secondary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .action-button.danger {
+            background: #dc2626;
+        }
+
+        .action-button.danger:hover {
+            background: #b91c1c;
+        }
+
+        .action-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-tertiary);
+        }
+
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+
+        .empty-state-subtext {
+            font-size: 0.9em;
+            color: var(--text-tertiary);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                left: -280px;
+                height: 100%;
+                z-index: 50;
+                transition: left 0.3s;
+                width: 280px;
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .main-container {
+                position: relative;
+            }
+
+            .app-title {
+                font-size: 0.95em;
+            }
+
+            .headword {
+                font-size: 1.8em;
+            }
+
+            .entry-container {
+                padding: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .app-header {
+                padding: 12px 16px;
+            }
+
+            .app-title {
+                font-size: 0.85em;
+            }
+
+            .headword {
+                font-size: 1.5em;
+            }
+
+            .camera-controls {
+                flex-direction: column;
+                width: calc(100% - 40px);
+            }
+
+            .camera-button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="app-header">
+        <div>
+            <div class="app-title">
+                OED Reader
+                <span class="app-title-sub">Micro-Print Scanner</span>
+            </div>
+        </div>
+        <div class="header-controls">
+            <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">🌙</button>
+            <button id="menuToggle" style="display:none;" title="Menu">☰</button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <div class="main-container">
+        <!-- SIDEBAR -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">Navigation</div>
+                <button class="nav-button active" data-screen="camera">📷 Scan Entry</button>
+                <button class="nav-button" data-screen="collection">⭐ My Collection</button>
+                <button class="nav-button" data-screen="help">ℹ️ Help & Guide</button>
+            </div>
+
+            <div class="sidebar-section" style="flex: 1; overflow-y: auto;">
+                <div class="sidebar-title">Recent Scans</div>
+                <div id="recentList"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Quick Links</div>
+                <button class="nav-button" id="exportButton">📥 Export Collection</button>
+                <button class="nav-button" id="clearButton">🗑️ Clear All</button>
+            </div>
+        </nav>
+
+        <!-- CONTENT AREA -->
+        <div class="content-area">
+            <!-- CAMERA SCREEN -->
+            <div class="screen active" id="camera-screen">
+                <div class="camera-preview">
+                    <video id="camera" autoplay playsinline></video>
+                    <canvas id="captureCanvas"></canvas>
+                    <div class="camera-controls">
+                        <button class="camera-button" id="captureButton">📸 Capture</button>
+                        <button class="camera-button secondary" id="uploadButton">📁 Upload</button>
+                    </div>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" style="display:none;">
+            </div>
+
+            <!-- PROCESSING SCREEN -->
+            <div class="screen" id="processing-screen">
+                <div class="entry-container">
+                    <div class="ocr-status">
+                        <div class="status-label">Processing image with OCR...</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="ocr-text" id="ocrText">Initializing Tesseract...</div>
+                    </div>
+                    <button class="action-button danger" id="cancelOCR">Cancel</button>
+                </div>
+            </div>
+
+            <!-- ENTRY DISPLAY SCREEN -->
+            <div class="screen" id="entry-screen">
+                <div class="entry-container" id="entryDisplay"></div>
+            </div>
+
+            <!-- COLLECTION SCREEN -->
+            <div class="screen" id="collection-screen">
+                <div class="entry-container">
+                    <h2 style="margin-bottom: 20px;">My Collection</h2>
+                    <div id="collectionDisplay"></div>
+                </div>
+            </div>
+
+            <!-- HELP SCREEN -->
+            <div class="screen" id="help-screen">
+                <div class="entry-container">
+                    <h2 style="margin-bottom: 20px;">How to Use OED Reader</h2>
+                    
+                    <div class="section">
+                        <div class="section-header">
+                            <span class="collapse-icon">▼</span>
+                            Getting Started
+                        </div>
+                        <div class="section-content">
+                            <p>1. Position your micro-print OED page under good lighting</p>
+                            <p style="margin-top: 8px;">2. Tap "Scan Entry" and allow camera access</p>
+                            <p style="margin-top: 8px;">3. Frame the word entry clearly and tap Capture</p>
+                            <p style="margin-top: 8px;">4. The OCR will process the image and extract the entry</p>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-header">
+                            <span class="collapse-icon">▼</span>
+                            Understanding Entries
+                        </div>
+                        <div class="section-content">
+                            <p><strong>Headword:</strong> The main word being defined</p>
+                            <p style="margin-top: 8px;"><strong>Etymology:</strong> Origin and historical development</p>
+                            <p style="margin-top: 8px;"><strong>Senses:</strong> Different meanings of the word</p>
+                            <p style="margin-top: 8px;"><strong>Quotations:</strong> Historical usage examples</p>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-header">
+                            <span class="collapse-icon">▼</span>
+                            Tips for Best Results
+                        </div>
+                        <div class="section-content">
+                            <p>• Use natural or bright artificial lighting</p>
+                            <p style="margin-top: 8px;">• Keep the camera steady and focused</p>
+                            <p style="margin-top: 8px;">• Avoid shadows and glare on the page</p>
+                            <p style="margin-top: 8px;">• Position the entry in the center of the frame</p>
+                            <p style="margin-top: 8px;">• Save entries to your collection for later reference</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="lib/tesseract.min.js"></script>
+    <script src="app.js"></script>
+    <script src="oedParser.js"></script>
+    <script src="storage.js"></script>
+</body>
+</html>
