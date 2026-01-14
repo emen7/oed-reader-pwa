@@ -1,13 +1,15 @@
 // OED Entry Parser
-// Converts raw OCR text into structured OED entry objects
+// Converts raw OCR text into structured OED entry objects with
+// completeness and overflow heuristics.
 
 function parseOEDEntry(rawText) {
-    if (!rawText || rawText.trim().length < 10) {
-        return null;
-    }
+    if (!rawText || rawText.trim().length < 10) return null;
 
-    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    
+    const lines = rawText
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
     const entry = {
         headword: '',
         pronunciation: '',
@@ -15,61 +17,68 @@ function parseOEDEntry(rawText) {
         etymology: '',
         etymologySource: '',
         senses: [],
-        rawText: rawText
+        rawText: rawText,
+        isComplete: true,
+        continuationNeeded: false,
+        overflowLikely: false
     };
 
     let currentSection = 'header';
     let currentSenseText = '';
-    let senseCount = 0;
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
 
-        // Try to identify headword (usually first substantial line, often ALL CAPS or bold-like)
-        if (i === 0 || (entry.headword === '' && line.length > 1 && line.length < 50)) {
-            // Remove common OED markers
-            let word = line.replace(/^\*/, '').replace(/†$/, '').trim();
-            
-            // Check if it looks like a headword (word chars, possibly with hyphens/apostrophes)
-            if (/^[a-z\s\-']+$/i.test(word) && !line.toLowerCase().includes('etymology')) {
-                entry.headword = word;
+        // Headword guess: first "word-like" line that is not obviously etymology.
+        if (!entry.headword && i <= 3) {
+            const candidate = line.replace(/^[*†]+/, '').trim();
+            if (/^[A-Za-z][A-Za-z\s\-']{1,40}$/.test(candidate) &&
+                !candidate.toLowerCase().includes('etymolog')) {
+                entry.headword = candidate;
                 continue;
             }
         }
 
-        // Pronunciation (usually in brackets or after headword)
-        if (line.match(/^\(/i) || line.match(/^\\[.*\\]/)) {
-            entry.pronunciation = line.replace(/^\(/, '').replace(/\)$/, '').trim();
+        // Pronunciation line (very heuristic: brackets or slashes, early in entry).
+        if (!entry.pronunciation &&
+            (line.startsWith('[') || line.startsWith('(') || line.includes('/'))) {
+            entry.pronunciation = line;
             continue;
         }
 
-        // Part of speech abbreviations
+        // Part of speech.
         const posMatch = line.match(/^(n\.|v\.|adj\.|adv\.|prep\.|conj\.|pron\.|interj\.)/i);
-        if (posMatch) {
+        if (posMatch && !entry.partOfSpeech) {
             entry.partOfSpeech = posMatch[1];
             continue;
         }
 
-        // Etymology marker
-        if (line.toLowerCase().includes('etymology') || line.toLowerCase().includes('from')) {
+        // Etymology trigger – crude but useful.
+        if (line.toLowerCase().startsWith('etym') ||
+            line.toLowerCase().includes('from ') ||
+            line.toLowerCase().includes('f. ') ||
+            line.toLowerCase().includes('fr. ')) {
             currentSection = 'etymology';
-            entry.etymologySource = extractEtymologySource(line);
+            if (!entry.etymologySource) {
+                entry.etymologySource = extractEtymologySource(line);
+            }
+            entry.etymology += (entry.etymology ? ' ' : '') + line;
             continue;
         }
 
-        // Sense numbers (1, 2, 3, etc. - often alone or followed by definition)
+        // Sense number like "1." "2." etc.
         const senseMatch = line.match(/^(\d+)\.\s*(.*)/);
         if (senseMatch) {
             if (currentSenseText) {
                 entry.senses.push(parseSense(currentSenseText));
+                currentSenseText = '';
             }
             currentSection = 'sense';
-            senseCount = parseInt(senseMatch[1]);
             currentSenseText = senseMatch[2] || '';
             continue;
         }
 
-        // Accumulate text based on section
+        // Accumulate.
         if (currentSection === 'etymology') {
             entry.etymology += (entry.etymology ? ' ' : '') + line;
         } else if (currentSection === 'sense') {
@@ -77,53 +86,82 @@ function parseOEDEntry(rawText) {
         }
     }
 
-    // Don't forget the last sense
     if (currentSenseText) {
         entry.senses.push(parseSense(currentSenseText));
     }
 
-    // Clean up
-    entry.etymology = entry.etymology.substring(0, 500); // Limit length
-    entry.senses = entry.senses.slice(0, 5); // Limit to 5 senses
+    // Trim & limit.
+    entry.etymology = entry.etymology.slice(0, 800);
+    entry.senses = entry.senses.slice(0, 8);
 
-    // Validate
-    if (!entry.headword || entry.headword.length < 2) {
-        return null;
-    }
+    if (!entry.headword || entry.headword.length < 2) return null;
+
+    // Heuristics for completeness and overflow.
+    detectCompletenessAndOverflow(entry);
 
     return entry;
 }
 
+function detectCompletenessAndOverflow(entry) {
+    const text = entry.rawText.trim();
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const lastLine = lines[lines.length - 1] || '';
+
+    // Assume incomplete if:
+    // - Last line lacks terminal punctuation.
+    // - Last token is hyphen.
+    // - Odd number of double quotes.
+    // - Very short last sense for short headword.
+    const endsProperly = /[.;?!:)\]]$/.test(lastLine);
+    const endsWithHyphen = /-$/.test(lastLine);
+    const quoteCount = (text.match(/"/g) || []).length;
+    const unclosedQuote = quoteCount % 2 !== 0;
+
+    let shortLastSense = false;
+    if (entry.senses.length > 0) {
+        const lastSense = entry.senses[entry.senses.length - 1];
+        shortLastSense = lastSense.definition && lastSense.definition.length < 30;
+    }
+
+    const likelyIncomplete =
+        !endsProperly ||
+        endsWithHyphen ||
+        unclosedQuote ||
+        (entry.headword.length <= 6 && entry.senses.length <= 1 && shortLastSense);
+
+    entry.isComplete = !likelyIncomplete;
+    entry.continuationNeeded = likelyIncomplete;
+
+    // Overflow to adjacent column if we have several senses but short final text.
+    entry.overflowLikely = !likelyIncomplete && shortLastSense && entry.senses.length >= 2;
+}
+
 function extractEtymologySource(line) {
-    // Try to identify source language from etymology line
-    const sources = ['Latin', 'Greek', 'Old French', 'Proto-Germanic', 'Sanskrit', 'Arabic', 'Hebrew', 'Germanic', 'French'];
-    for (let source of sources) {
-        if (line.toLowerCase().includes(source.toLowerCase())) {
-            return source;
-        }
+    const sources = [
+        'Latin','Greek','Old French','Old English','Middle English',
+        'Proto-Germanic','Germanic','Sanskrit','Arabic','Hebrew','French','German'
+    ];
+    for (const s of sources) {
+        if (line.toLowerCase().includes(s.toLowerCase())) return s;
     }
     return '';
 }
 
 function parseSense(senseText) {
-    const sense = {
-        definition: '',
-        quotations: []
-    };
+    const sense = { definition: '', quotations: [] };
 
-    // Look for quotations (usually in quotes or after semicolons)
     const quoteMatch = senseText.match(/"([^"]{20,200})"/);
     if (quoteMatch) {
         sense.quotations.push(quoteMatch[1]);
         sense.definition = senseText.replace(/"([^"]{20,200})"/, '').trim();
     } else {
-        sense.definition = senseText.substring(0, 300);
+        sense.definition = senseText.slice(0, 400);
     }
 
     return sense;
 }
 
-// OED Abbreviations reference
+// Abbreviation map (kept small; extend as needed).
 const oedAbbreviations = {
     'n.': 'noun',
     'v.': 'verb',
@@ -139,22 +177,10 @@ const oedAbbreviations = {
     'Sc.': 'Scottish',
     'arch.': 'archaic',
     'obs.': 'obsolete',
-    'rare': 'rare',
     'poet.': 'poetic',
-    'vulg.': 'vulgar',
     'dial.': 'dialect',
-    'regional': 'regional',
-    'slang': 'slang',
     'fig.': 'figurative',
     'hist.': 'historical',
-    'Hist.': 'historical',
-    'cf.': 'compare',
-    'const.': 'construction',
-    'w.': 'with',
-    'pa.': 'past',
-    'ppl. a.': 'participial adjective',
-    'pass.': 'passive',
-    'mod.': 'modern',
     'ME.': 'Middle English',
     'OE.': 'Old English',
     'OF.': 'Old French',
@@ -162,7 +188,6 @@ const oedAbbreviations = {
     'L.': 'Latin',
     'Gr.': 'Greek',
     'Gmc.': 'Germanic',
-    'IE.': 'Indo-European',
     'prob.': 'probably',
     'perh.': 'perhaps',
     'app.': 'apparently',
