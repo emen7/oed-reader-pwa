@@ -41,7 +41,16 @@ class OEDReaderApp {
         });
 
         // Camera
-        document.getElementById('captureButton').addEventListener('click', () => this.captureImage());
+        const captureBtn = document.getElementById('captureButton');
+        if (captureBtn) {
+            captureBtn.addEventListener('click', () => {
+                console.log('Capture button event listener fired');
+                this.captureImage();
+            });
+            console.log('Capture button listener attached');
+        } else {
+            console.error('Capture button not found!');
+        }
         document.getElementById('uploadButton').addEventListener('click', () => {
             document.getElementById('fileInput').click();
         });
@@ -66,8 +75,14 @@ class OEDReaderApp {
 
         // Sidebar toggle
         const menuToggle = document.getElementById('menuToggle');
-        if (window.innerWidth <= 768) {
-            menuToggle.style.display = 'block';
+        if (menuToggle) {
+            // Show on mobile, hide on desktop
+            const updateMenuToggle = () => {
+                menuToggle.style.display = window.innerWidth <= 768 ? 'block' : 'none';
+            };
+            updateMenuToggle();
+            window.addEventListener('resize', updateMenuToggle);
+
             menuToggle.addEventListener('click', () => {
                 document.getElementById('sidebar').classList.toggle('open');
             });
