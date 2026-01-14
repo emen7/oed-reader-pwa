@@ -108,9 +108,11 @@ class OEDReaderApp {
         // Special handling for different screens
         if (screenName === 'camera') {
             this.startCamera();
-        } else if (screenName === 'camera') {
+        } else {
             this.stopCamera();
-        } else if (screenName === 'collection') {
+        }
+
+        if (screenName === 'collection') {
             this.displayCollection();
         }
     }
@@ -145,6 +147,14 @@ class OEDReaderApp {
     captureImage() {
         const video = document.getElementById('camera');
         const canvas = document.getElementById('captureCanvas');
+
+        // Check if video is ready and has valid dimensions
+        if (!video.videoWidth || !video.videoHeight) {
+            alert('Camera is not ready yet. Please wait a moment and try again.');
+            console.error('Video dimensions are 0:', video.videoWidth, video.videoHeight);
+            return;
+        }
+
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
 
@@ -152,6 +162,10 @@ class OEDReaderApp {
         ctx.drawImage(video, 0, 0);
 
         canvas.toBlob((blob) => {
+            if (!blob) {
+                alert('Failed to capture image. Please try again.');
+                return;
+            }
             this.processImage(blob);
         }, 'image/jpeg', 0.95);
     }

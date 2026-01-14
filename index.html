@@ -729,9 +729,16 @@
     </div>
 
     <!-- SCRIPTS -->
-    <script src="lib/tesseract.min.js"></script>
-    <script src="app.js"></script>
-    <script src="oedParser.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="storage.js"></script>
+    <script src="oedParser.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // Initialize app when all scripts are loaded
+        let app;
+        window.addEventListener('DOMContentLoaded', () => {
+            app = new OEDReaderApp();
+        });
+    </script>
 </body>
 </html>
